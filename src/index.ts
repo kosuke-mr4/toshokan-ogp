@@ -1,7 +1,5 @@
 import { GatewayIntentBits, Client, Partials, Message } from "discord.js";
 import dotenv from "dotenv";
-import { load } from "cheerio";
-import axios from "axios";
 
 dotenv.config();
 
@@ -36,32 +34,34 @@ client.on("messageCreate", async (message: Message) => {
 client.login(process.env.TOKEN);
 
 const responseMesssaage = (message: Message) => {
-  scrapingMessage(message).then((bookInfo) => {
+  fetchImageURL(message.content).then((bookInfo) => {
     message.channel.send(bookInfo);
   });
 };
 
-const scrapingMessage = async (message: Message): Promise<string> => {
-  const url = message.content;
-  try {
-    const response = await axios.get(url);
-    const html = response.data;
+const puppeteer = require("puppeteer");
 
-    const $ = load(html);
-    const title = $("#lid_intro_major_title").text().trim();
-    const author = $("#lid_intro_lead_au").text().trim();
-    let imageUrl = $("#lid_intro_thumbnail").attr("src");
+async function fetchImageURL(pageURL: string) {
+  const browser = await puppeteer.launch();
+  const page = await browser.newPage();
+  await page.goto(pageURL, { waitUntil: "networkidle2" });
 
-    if (imageUrl) {
-      imageUrl = `https://www.tulips.tsukuba.ac.jp${imageUrl}`;
-    }
-    const bookInfo = `タイトル: ${title},\n作者: ${author},\n ${imageUrl}`;
-    return bookInfo;
-  } catch (err) {
-    if (err instanceof Error) {
-      console.log("Error: " + err.message);
-      return "Error: " + err.message;
-    }
-    return "An error occurred";
-  }
-};
+  const title = await page.evaluate(() => {
+    const element = document.querySelector("#lid_intro_major_title");
+    return element ? element.textContent : null;
+  });
+
+  const author = await page.evaluate(() => {
+    const element = document.querySelector("#lid_intro_lead_au");
+    return element ? element.textContent : null;
+  });
+
+  const imageURL = await page.evaluate(() => {
+    const element = document.querySelector("#lid_intro_thumbnail");
+    return element ? element.getAttribute("src") : null;
+  });
+
+  await browser.close();
+  const bookInfo = `タイトル:${title}\n作者:${author}\n${imageURL}`;
+  return bookInfo;
+}
