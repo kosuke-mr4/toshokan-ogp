@@ -35,7 +35,9 @@ client.login(process.env.TOKEN);
 
 const responseMesssaage = (message: Message) => {
   fetchImageURL(message.content).then((bookInfo) => {
-    message.channel.send(bookInfo);
+    message.channel.send(`タイトル:${bookInfo.title}`);
+    message.channel.send(`著者:${bookInfo.author}`);
+    message.channel.send(bookInfo.imageURL);
   });
 };
 
@@ -62,6 +64,6 @@ async function fetchImageURL(pageURL: string) {
   });
 
   await browser.close();
-  const bookInfo = `タイトル:${title}\n作者:${author}\n${imageURL}`;
+  const bookInfo = { title, author, imageURL };
   return bookInfo;
 }
